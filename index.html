@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Scatterplot Graph</title>
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #title {
+      font-size: xx-large;
+    }
+
+    #vis-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #tooltip {
+      position: absolute;
+      background-color: white;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.25);
+      padding: 1em;
+    }
+  </style>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+</head>
+
+<body>
+  <script>
+    let dataURL = "https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json",
+      fccScriptURL = "https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js",
+      margin = { top: 30, right: 30, bottom: 30, left: 60 },
+      width = 800 - margin.left - margin.right,
+      height = 400 - margin.top - margin.bottom,
+      timeFormat = d3.timeFormat("%M:%S"),
+      yearFormat = d3.timeFormat("%Y"),
+      colors = { good: "green", bad: "orangered" };
+
+    /* Add container div */
+    d3.select("body")
+      .append("div")
+      .attr("id", "vis-container");
+
+    /* Title */
+    d3.select("#vis-container")
+      .append("div")
+      .attr("id", "title")
+      .text("Doping in Professional Bicycling");
+
+    /* Add svg */
+    let svg = d3.select("#vis-container")
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+    /* Add tooltip */
+    let toolTip = d3.select("#vis-container")
+      .append("div")
+      .attr("id", "tooltip")
+      .style("opacity", 0);
+
+    /* Retrieve and plot data */
+    d3.json(dataURL).then((data, error) => {
+      if (error) throw error;
+      console.log(data);
+
+      /* Create x-axis */
+      let xScale = d3
+        .scaleLinear()
+        .domain([d3.min(data, d => {
+          return d.Year;
+        }), d3.max(data, d => {
+          return d.Year;
+        })])
+        .range([0, width]);
+
+      /* Create y-axis */
+      let yScale = d3
+        .scaleTime()
+        .domain([d3.min(data, d => {
+          return new Date(0, 0, 1, 0, parseInt(d.Time.substring(0, 2)), parseInt(d.Time.substring(3)));
+        }), d3.max(data, d => {
+          return new Date(0, 0, 1, 0, parseInt(d.Time.substring(0, 2)), parseInt(d.Time.substring(3)));
+        })])
+        .range([height, 0]);
+
+      /* Add axes to graph */
+      svg.append("g")
+        .attr("id", "y-axis")
+        .call(d3.axisLeft(yScale).tickFormat(timeFormat));
+      svg
+        .append("g")
+        .attr("id", "x-axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(xScale).tickFormat(d3.format("Y")));
+
+      /* Add dots to scatterplot */
+      svg.append("g")
+        .selectAll(".dot")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("class", "dot")
+        .attr("data-xvalue", d => {
+          return d.Year;
+        })
+        .attr("data-yvalue", d => {
+          return new Date(0, 0, 1, 0, parseInt(d.Time.substring(0, 2)), parseInt(d.Time.substring(3)));
+        })
+        .attr("r", 6)
+        .attr("cx", d => {
+          return xScale(d.Year);
+        })
+        .attr("cy", d => {
+          return yScale(new Date(0, 0, 1, 0, parseInt(d.Time.substring(0, 2)), parseInt(d.Time.substring(3))));
+        })
+        .style("fill", d => {
+          return d.Doping == "" ? colors.good : colors.bad;
+        })
+        .style("stroke", "darkgrey")
+        .on("mouseover", d => {
+          toolTip.transition().duration(150).style("opacity", 0.9);
+          toolTip.html(`
+          <strong>${d.Name}</strong>:&nbsp;${d.Nationality}</br>
+          Year:&nbsp;${d.Year}&nbsp;&nbsp;Time:&nbsp;${parseInt(d.Time.substring(0, 2))}:${parseInt(d.Time.substring(3))}` +
+            (d.Doping != "" ? `</br></br><em>\"${d.Doping}</em>\"` : ""))
+            .style("top", (d3.event.pageY - 15) + "px")
+            .style("left", (d3.event.pageX + 28) + "px")
+            .attr("data-year", d.Year);
+        })
+        .on("mouseout", d => {
+          toolTip.transition().duration(200).style("opacity", 0);
+        });
+
+      /* Add legend */
+      let legendContainer = svg.append("g")
+        .attr("id", "legend");
+
+      let legend = legendContainer
+        .selectAll("#legend")
+        .data(["good", "bad"])
+        .enter()
+        .append("g")
+        .attr("class", "legend-label")
+        .attr("transform", (d, i) => {
+          return "translate(0," + (height / 1.5 - i * 20) + ")";
+        });
+
+      legend.append("rect")
+        .attr("fill", d => {
+          return colors[d];
+        })
+        .attr("x", width - 18)
+        .attr("width", 18)
+        .attr("height", 18);
+
+      legend.append("text")
+        .attr("x", width - 24)
+        .attr("y", 9)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", "end")
+        .text(d => {
+          return d == "good" ? "No doping allegations" : "Bikers with doping allegations";
+        })
+    });
+
+    /* Add FCC Script */
+    d3.select("body")
+      .append("script")
+      .attr("src", fccScriptURL);
+  </script>
+</body>
+
+</html>
