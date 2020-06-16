@@ -133,10 +133,11 @@
             (d.Doping != "" ? `</br></br><em>\"${d.Doping}</em>\"` : ""))
             .style("top", (d3.event.pageY - 15) + "px")
             .style("left", (d3.event.pageX + 28) + "px")
+            .style("z-index", 5)
             .attr("data-year", d.Year);
         })
         .on("mouseout", d => {
-          toolTip.transition().duration(200).style("opacity", 0);
+          toolTip.transition().duration(200).style("opacity", 0).style("z-index", -1);
         });
 
       /* Add legend */
